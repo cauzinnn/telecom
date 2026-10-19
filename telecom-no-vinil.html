@@ -1,0 +1,1696 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Do Sulco ao Som: A Engenharia de Telecomunicações no Vinil</title>
+
+    <!-- Google Fonts: Newsreader (display serif), Hanken Grotesk (sans), DM Mono (chrome/telemetry) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,400;0,500;1,400&family=Hanken+Grotesk:wght@400;500;600;700&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&display=swap" rel="stylesheet">
+
+    <style>
+        /* ===========================================
+           FIXED 16:9 STAGE: MANDATORY BASE STYLES
+           =========================================== */
+        html, body {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            overflow: hidden;
+            background: #D8D2C2;
+            user-select: none;
+        }
+
+        .deck-viewport {
+            position: fixed;
+            inset: 0;
+            overflow: hidden;
+            background: #D8D2C2;
+        }
+
+        .deck-stage {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            transform-origin: 0 0;
+            background: #F0EBDE;
+        }
+
+        .slide {
+            position: absolute;
+            inset: 0;
+            width: 1920px;
+            height: 1080px;
+            overflow: hidden;
+            display: block;
+            visibility: hidden;
+            opacity: 0;
+            pointer-events: none;
+            background: #F0EBDE;
+            transition: opacity 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .slide.active, .slide.visible {
+            visibility: visible;
+            opacity: 1;
+            pointer-events: auto;
+            z-index: 1;
+        }
+
+        img, video, canvas, svg {
+            max-width: 100%;
+            max-height: 100%;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            *, *::before, *::after {
+                animation-duration: 0.01ms !important;
+                transition-duration: 0.1s !important;
+            }
+        }
+
+        /* ===========================================
+           COBALT GRID DESIGN SYSTEM
+           =========================================== */
+        :root {
+            --color-paper: #F0EBDE;
+            --color-paper-alt: #E6E0CE;
+            --color-ink: #1F2BE0;
+            --color-ink-soft: #5560E5;
+            --color-grid: rgba(31, 43, 224, 0.07);
+            --color-ink-faint: rgba(31, 43, 224, 0.18);
+
+            --font-display: 'Newsreader', Georgia, serif;
+            --font-sans: 'Hanken Grotesk', -apple-system, sans-serif;
+            --font-mono: 'DM Mono', monospace;
+
+            --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .stage-canvas {
+            width: 100%;
+            height: 100%;
+            box-sizing: border-box;
+            position: relative;
+            background-color: var(--color-paper);
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 56px 90px;
+        }
+
+        /* Permanent 10% Graph Paper Grid */
+        .stage-canvas::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background-image: 
+                linear-gradient(var(--color-grid) 1px, transparent 1px),
+                linear-gradient(90deg, var(--color-grid) 1px, transparent 1px),
+                linear-gradient(rgba(31, 43, 224, 0.025) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(31, 43, 224, 0.025) 1px, transparent 1px);
+            background-size: 80px 80px, 80px 80px, 16px 16px, 16px 16px;
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        /* Top & Bottom Hairline Rules */
+        .stage-canvas::after {
+            content: '';
+            position: absolute;
+            left: 90px;
+            right: 90px;
+            top: 42px;
+            height: 1.5px;
+            background: var(--color-ink);
+            z-index: 2;
+        }
+
+        .bottom-hairline {
+            position: absolute;
+            left: 90px;
+            right: 90px;
+            bottom: 42px;
+            height: 1.5px;
+            background: var(--color-ink);
+            z-index: 2;
+        }
+
+        /* Header Bar - Limpo, sem minutos */
+        .slide-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            position: relative;
+            z-index: 3;
+            border-bottom: 1.5px solid var(--color-ink);
+            padding-bottom: 16px;
+            margin-top: 4px;
+        }
+
+        .header-title-left {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            letter-spacing: 2.5px;
+            text-transform: uppercase;
+            color: var(--color-ink);
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            font-weight: 500;
+        }
+
+        .header-meta-right {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 2px;
+            color: var(--color-ink-soft);
+            text-transform: uppercase;
+        }
+
+        /* Slide Content Area */
+        .slide-body {
+            position: relative;
+            z-index: 3;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 30px 0 20px 0;
+        }
+
+        /* Footer Chrome */
+        .slide-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: relative;
+            z-index: 3;
+            padding-top: 14px;
+            font-family: var(--font-mono);
+            font-size: 15px;
+            color: var(--color-ink);
+            letter-spacing: 1px;
+            margin-bottom: 4px;
+        }
+
+        .footer-course {
+            opacity: 0.85;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+        }
+
+        .footer-page-counter {
+            font-weight: 500;
+            letter-spacing: 2px;
+        }
+
+        /* ===========================================
+           TYPOGRAPHY UTILITIES (FONTES AMPLAS E LEGÍVEIS)
+           =========================================== */
+        .display-hero {
+            font-family: var(--font-display);
+            font-size: 116px;
+            line-height: 0.94;
+            font-weight: 400;
+            color: var(--color-ink);
+            letter-spacing: -2px;
+            margin: 0;
+        }
+
+        .display-hero em {
+            font-style: italic;
+        }
+
+        .display-title {
+            font-family: var(--font-display);
+            font-size: 74px;
+            line-height: 1.02;
+            font-weight: 400;
+            color: var(--color-ink);
+            letter-spacing: -1.5px;
+            margin: 0 0 20px 0;
+        }
+
+        .display-title em {
+            font-style: italic;
+        }
+
+        .sub-kicker {
+            font-family: var(--font-sans);
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--color-ink-soft);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .sub-kicker::before {
+            content: "■";
+            font-size: 11px;
+            color: var(--color-ink);
+        }
+
+        .lede-text {
+            font-family: var(--font-sans);
+            font-size: 32px;
+            line-height: 1.4;
+            color: #17192C;
+            max-width: 1040px;
+        }
+
+        .body-desc {
+            font-family: var(--font-sans);
+            font-size: 24px;
+            line-height: 1.45;
+            color: #1F2238;
+        }
+
+        .mono-tag {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: var(--color-ink);
+        }
+
+        /* ===========================================
+           COMPONENTS & GRIDS
+           =========================================== */
+        .split-2col {
+            display: grid;
+            grid-template-columns: 1.1fr 0.9fr;
+            gap: 60px;
+            align-items: center;
+            height: 100%;
+        }
+
+        .split-50-50 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 52px;
+            align-items: center;
+            height: 100%;
+        }
+
+        .cards-grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 36px;
+            width: 100%;
+        }
+
+        .cards-grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 44px;
+            width: 100%;
+        }
+
+        .telecom-card {
+            background: var(--color-paper-alt);
+            border: 1.5px solid var(--color-ink);
+            padding: 36px 38px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .telecom-card.highlight {
+            background: #EBE4D2;
+            box-shadow: 6px 6px 0px rgba(31, 43, 224, 0.15);
+        }
+
+        .card-num-badge {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 2px;
+            color: var(--color-ink);
+            border-bottom: 1.5px solid var(--color-ink-faint);
+            padding-bottom: 10px;
+            margin-bottom: 16px;
+            display: flex;
+            justify-content: space-between;
+            font-weight: 500;
+        }
+
+        .card-heading {
+            font-family: var(--font-display);
+            font-size: 40px;
+            line-height: 1.08;
+            font-weight: 400;
+            color: var(--color-ink);
+            margin: 0 0 16px 0;
+        }
+
+        .card-quote {
+            font-family: var(--font-display);
+            font-size: 44px;
+            line-height: 1.2;
+            color: var(--color-ink);
+            border-left: 3.5px solid var(--color-ink);
+            padding-left: 32px;
+            margin: 24px 0;
+            font-style: italic;
+        }
+
+        /* Ledger Table Structure */
+        .ledger-table {
+            width: 100%;
+            border-top: 2px solid var(--color-ink);
+            border-bottom: 2px solid var(--color-ink);
+        }
+
+        .ledger-header {
+            display: grid;
+            grid-template-columns: 140px 1.35fr 1.65fr 150px;
+            padding: 16px 20px;
+            font-family: var(--font-sans);
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: var(--color-ink);
+            border-bottom: 2px solid var(--color-ink);
+            background: rgba(31, 43, 224, 0.04);
+        }
+
+        .ledger-row {
+            display: grid;
+            grid-template-columns: 140px 1.35fr 1.65fr 150px;
+            padding: 22px 20px;
+            align-items: center;
+            border-bottom: 1px solid var(--color-ink-faint);
+            font-family: var(--font-sans);
+        }
+
+        .ledger-row:last-child {
+            border-bottom: none;
+        }
+
+        .ledger-code {
+            font-family: var(--font-mono);
+            font-size: 16px;
+            color: var(--color-ink);
+            font-weight: 500;
+        }
+
+        .ledger-title {
+            font-family: var(--font-display);
+            font-size: 30px;
+            color: var(--color-ink);
+            font-weight: 400;
+            line-height: 1.15;
+            padding-right: 20px;
+        }
+
+        .ledger-desc {
+            font-size: 21px;
+            line-height: 1.4;
+            color: #1F2238;
+            padding-right: 20px;
+        }
+
+        .ledger-status {
+            font-family: var(--font-mono);
+            font-size: 15px;
+            letter-spacing: 1.5px;
+            text-align: right;
+            font-weight: 600;
+        }
+
+        .status-mito {
+            color: #C02626;
+        }
+
+        .status-verdade {
+            color: #0E7440;
+        }
+
+        /* SVG Diagrams & Visuals */
+        .diagram-container {
+            width: 100%;
+            height: 100%;
+            background: var(--color-paper-alt);
+            border: 1.5px solid var(--color-ink);
+            padding: 24px;
+            box-sizing: border-box;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .diagram-caption {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            letter-spacing: 1.8px;
+            text-transform: uppercase;
+            color: var(--color-ink-soft);
+            margin-top: 14px;
+            align-self: flex-start;
+        }
+
+        /* Progress Bar */
+        .progress-track {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 4px;
+            background: transparent;
+            z-index: 9999;
+        }
+
+        .progress-fill {
+            height: 100%;
+            width: 0%;
+            background: var(--color-ink);
+            transition: width 0.3s ease;
+        }
+
+        /* ===========================================
+           BARRA DE NAVEGAÇÃO TOTALMENTE OCULTA POR PADRÃO
+           Aparece apenas se o mouse passar na borda inferior
+           =========================================== */
+        .deck-controls-hover-zone {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 56px;
+            z-index: 10000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            pointer-events: auto;
+        }
+
+        .deck-controls {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            background: #F0EBDE;
+            border: 1.5px solid var(--color-ink);
+            padding: 8px 18px;
+            box-shadow: 4px 4px 0px rgba(31, 43, 224, 0.15);
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(12px);
+            transition: opacity 0.25s ease, transform 0.25s ease;
+        }
+
+        .deck-controls-hover-zone:hover .deck-controls {
+            opacity: 1;
+            pointer-events: auto;
+            transform: translateY(0);
+        }
+
+        .control-btn {
+            background: transparent;
+            border: 1px solid var(--color-ink);
+            color: var(--color-ink);
+            font-family: var(--font-mono);
+            font-size: 13px;
+            padding: 5px 12px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            transition: all 0.15s ease;
+        }
+
+        .control-btn:hover {
+            background: var(--color-ink);
+            color: #F0EBDE;
+        }
+
+        .control-slide-info {
+            font-family: var(--font-mono);
+            font-size: 14px;
+            color: var(--color-ink);
+            letter-spacing: 1.5px;
+            padding: 0 10px;
+            font-weight: 500;
+        }
+
+        /* Edit Mode Indicator - Ativado somente por tecla E */
+        .edit-badge {
+            display: none;
+            position: fixed;
+            top: 14px;
+            right: 20px;
+            background: var(--color-ink);
+            color: #F0EBDE;
+            font-family: var(--font-mono);
+            font-size: 12px;
+            letter-spacing: 1.5px;
+            padding: 6px 14px;
+            text-transform: uppercase;
+            z-index: 10001;
+            box-shadow: 2px 2px 0px rgba(0,0,0,0.2);
+        }
+
+        body.edit-mode-active .edit-badge {
+            display: block;
+        }
+
+        body.edit-mode-active [contenteditable="true"] {
+            outline: 2px dashed var(--color-ink);
+            outline-offset: 4px;
+        }
+
+        /* Animations */
+        .reveal {
+            opacity: 0;
+            transform: translateY(16px);
+            transition: opacity 0.45s var(--ease-out), transform 0.45s var(--ease-out);
+        }
+
+        .slide.visible .reveal {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .slide.visible .reveal:nth-child(1) { transition-delay: 0.06s; }
+        .slide.visible .reveal:nth-child(2) { transition-delay: 0.12s; }
+        .slide.visible .reveal:nth-child(3) { transition-delay: 0.18s; }
+        .slide.visible .reveal:nth-child(4) { transition-delay: 0.24s; }
+    </style>
+</head>
+<body>
+
+    <!-- Fixed Top Progress Track -->
+    <div class="progress-track">
+        <div class="progress-fill" id="progressFill"></div>
+    </div>
+
+    <!-- Edit Mode Active Indicator (Pressione E para alternar) -->
+    <div class="edit-badge">Modo de Edição Ativo (Ctrl+S para salvar • E para sair)</div>
+
+    <!-- Viewport Wrapper -->
+    <div class="deck-viewport">
+        <main class="deck-stage" id="deckStage">
+
+            <!-- ========================================================
+                 SLIDE 1: CAPA
+                 ======================================================== -->
+            <section class="slide active visible" data-section="Capa">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>ENGENHARIA DE COMPUTAÇÃO E INFORMAÇÃO</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>TELECOMUNICAÇÕES // APRESENTAÇÃO</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div style="display: flex; flex-direction: column; gap: 24px;">
+                                <div class="sub-kicker reveal">Canal de Armazenamento Mecânico</div>
+                                <h1 class="display-hero reveal">
+                                    Do Sulco<br><em>ao Som</em>
+                                </h1>
+                                <div class="lede-text reveal" style="border-left: 3px solid var(--color-ink); padding-left: 28px;">
+                                    A engenharia de telecomunicações por trás do disco de vinil: modulação ortogonal 45/45°, equalização RIAA e a fronteira entre o contínuo e o discreto.
+                                </div>
+                            </div>
+
+                            <div class="telecom-card highlight reveal">
+                                <div class="card-num-badge">
+                                    <span>ESPECIFICAÇÕES DO CANAL</span>
+                                    <span>ECI-TEL-01</span>
+                                </div>
+                                <div style="display: flex; flex-direction: column; gap: 20px; margin-top: 10px;">
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1.5px dotted var(--color-ink); padding-bottom:10px;">
+                                        <span class="mono-tag">MEIO DE PROPAGAÇÃO</span>
+                                        <span class="mono-tag" style="font-weight:700;">PVC MICROGROOVE</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1.5px dotted var(--color-ink); padding-bottom:10px;">
+                                        <span class="mono-tag">LARGURA DE BANDA</span>
+                                        <span class="mono-tag" style="font-weight:700;">20 Hz a 20.000 Hz</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1.5px dotted var(--color-ink); padding-bottom:10px;">
+                                        <span class="mono-tag">MODULAÇÃO ESTÉREO</span>
+                                        <span class="mono-tag" style="font-weight:700;">ORTOGONAL 45°/45°</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1.5px dotted var(--color-ink); padding-bottom:10px;">
+                                        <span class="mono-tag">FILTRAGEM / RUÍDO</span>
+                                        <span class="mono-tag" style="font-weight:700;">CURVA RIAA (PRÉ/DE-ÊNFASE)</span>
+                                    </div>
+                                    <div style="display:flex; justify-content:space-between; border-bottom:1.5px dotted var(--color-ink); padding-bottom:10px;">
+                                        <span class="mono-tag">SNR DO CANAL</span>
+                                        <span class="mono-tag" style="font-weight:700;">~55 a 65 dB</span>
+                                    </div>
+                                </div>
+                                <div style="margin-top: 28px; display:flex; justify-content:space-between; align-items:center;">
+                                    <span class="mono-tag" style="font-size:14px; color:var(--color-ink-soft);">ANÁLISE DE SINAIS E SISTEMAS</span>
+                                    <svg width="48" height="20" viewBox="0 0 40 18" fill="none">
+                                        <rect x="0" y="0" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="7" y="0" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="14" y="0" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="28" y="0" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="0" y="7" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="21" y="7" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="35" y="7" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="7" y="14" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="14" y="14" width="5" height="5" fill="#1F2BE0"/>
+                                        <rect x="28" y="14" width="5" height="5" fill="#1F2BE0"/>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">01 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 2: INTRODUÇÃO / O GANCHO
+                 ======================================================== -->
+            <section class="slide" data-section="Introdução">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>01 // INTRODUÇÃO</span>
+                            <span>O GANCHO DO VINIL</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>OBJETIVO DA APRESENTAÇÃO</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">Física Mecânica Aplicada a Redes de Comunicação</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 36px;">
+                            O vinil não é só nostalgia:<br><em>é um canal de transmissão física pura.</em>
+                        </h2>
+
+                        <div class="cards-grid-3">
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>CONCEITO 01</span>
+                                    <span>CONVERSÃO DE SINAL</span>
+                                </div>
+                                <h3 class="card-heading">Transdução Total</h3>
+                                <p class="body-desc">
+                                    Ondas de pressão acústica convertidas em corrente elétrica, gravadas como relevo tridimensional e decodificadas mecanicamente por indução.
+                                </p>
+                            </div>
+
+                            <div class="telecom-card highlight reveal">
+                                <div class="card-num-badge">
+                                    <span>CONCEITO 02</span>
+                                    <span>RESTRIÇÃO DE CANAL</span>
+                                </div>
+                                <h3 class="card-heading">Limitações do Meio</h3>
+                                <p class="body-desc">
+                                    Mesmos desafios de enlaces de rádio e fibra: ruído térmico, atenuação espectral severa, não-linearidades e saturação de potência.
+                                </p>
+                            </div>
+
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>CONCEITO 03</span>
+                                    <span>SOLUÇÃO DE ENGENHARIA</span>
+                                </div>
+                                <h3 class="card-heading">Equalização & Banda</h3>
+                                <p class="body-desc">
+                                    Filtragem analógica pré-ênfase (Curva RIAA) e modulação ortogonal em quadratura antes da computação digital moderna existir.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">02 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 3: O VINIL COMO SISTEMA DE TELECOMUNICAÇÕES
+                 ======================================================== -->
+            <section class="slide" data-section="Cadeia de Telecom">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>01 // INTRODUÇÃO</span>
+                            <span>ARQUITETURA DE TRANSMISSÃO</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>MODELO DE SHANNON NO VINIL</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">A Cadeia Linear Clássica de Telecomunicações</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                            O disco mapeado como <em>sistema transmissor-receptor</em>
+                        </h2>
+
+                        <div class="diagram-container reveal" style="height: 420px;">
+                            <svg width="100%" height="320" viewBox="0 0 1700 320" fill="none">
+                                <!-- Box 1: Fonte -->
+                                <rect x="30" y="80" width="240" height="150" stroke="#1F2BE0" stroke-width="2.5" fill="#F0EBDE"/>
+                                <text x="150" y="130" font-family="'Newsreader', serif" font-size="28" fill="#1F2BE0" text-anchor="middle">FONTE</text>
+                                <text x="150" y="170" font-family="'DM Mono', monospace" font-size="17" fill="#5560E5" text-anchor="middle">Sinal Acústico</text>
+                                <text x="150" y="200" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#1F2BE0" text-anchor="middle">20 Hz a 20 kHz</text>
+
+                                <!-- Setas -->
+                                <path d="M270 155 H340" stroke="#1F2BE0" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+                                <!-- Box 2: Transmissor -->
+                                <rect x="350" y="80" width="290" height="150" stroke="#1F2BE0" stroke-width="2.5" fill="#E6E0CE"/>
+                                <text x="495" y="125" font-family="'Newsreader', serif" font-size="28" fill="#1F2BE0" text-anchor="middle">TRANSMISSOR</text>
+                                <text x="495" y="165" font-family="'DM Mono', monospace" font-size="18" fill="#1F2BE0" text-anchor="middle" font-weight="700">Equalizador RIAA</text>
+                                <text x="495" y="195" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#5560E5" text-anchor="middle">Filtro de Pré-ênfase</text>
+
+                                <path d="M640 155 H710" stroke="#1F2BE0" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+                                <!-- Box 3: Canal Físico -->
+                                <rect x="720" y="50" width="320" height="210" stroke="#1F2BE0" stroke-width="3" fill="#F0EBDE" stroke-dasharray="8 6"/>
+                                <text x="880" y="95" font-family="'Newsreader', serif" font-size="30" fill="#1F2BE0" text-anchor="middle" font-weight="600">CANAL FÍSICO</text>
+                                <text x="880" y="135" font-family="'DM Mono', monospace" font-size="18" fill="#1F2BE0" text-anchor="middle">Sulco de PVC 33⅓ RPM</text>
+                                <text x="880" y="175" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#C02626" text-anchor="middle" font-weight="600">+ Ruído de Superfície</text>
+                                <text x="880" y="205" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#C02626" text-anchor="middle" font-weight="600">+ Distorção Harmônica</text>
+
+                                <path d="M1040 155 H1110" stroke="#1F2BE0" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+                                <!-- Box 4: Receptor -->
+                                <rect x="1120" y="80" width="290" height="150" stroke="#1F2BE0" stroke-width="2.5" fill="#E6E0CE"/>
+                                <text x="1265" y="125" font-family="'Newsreader', serif" font-size="28" fill="#1F2BE0" text-anchor="middle">RECEPTOR</text>
+                                <text x="1265" y="165" font-family="'DM Mono', monospace" font-size="18" fill="#1F2BE0" text-anchor="middle" font-weight="700">Cápsula + Pré RIAA</text>
+                                <text x="1265" y="195" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#5560E5" text-anchor="middle">Filtro de De-ênfase</text>
+
+                                <path d="M1410 155 H1470" stroke="#1F2BE0" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+                                <!-- Box 5: Destino -->
+                                <rect x="1480" y="80" width="190" height="150" stroke="#1F2BE0" stroke-width="2.5" fill="#F0EBDE"/>
+                                <text x="1575" y="130" font-family="'Newsreader', serif" font-size="28" fill="#1F2BE0" text-anchor="middle">DESTINO</text>
+                                <text x="1575" y="170" font-family="'DM Mono', monospace" font-size="17" fill="#5560E5" text-anchor="middle">Amplificador</text>
+                                <text x="1575" y="200" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#1F2BE0" text-anchor="middle">Ouvinte</text>
+
+                                <defs>
+                                    <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#1F2BE0"/>
+                                    </marker>
+                                </defs>
+                            </svg>
+                            <div class="diagram-caption">FIG 1.0 — FLUXO COMPLETO DE SINAL E TRATAMENTO DE RUÍDO</div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">03 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 4: DO SULCO AO SOM — TRANSDUÇÃO MECÂNICA
+                 ======================================================== -->
+            <section class="slide" data-section="Transdução">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>02 // DO SULCO AO SOM</span>
+                            <span>TRANSDUÇÃO E FABRICAÇÃO</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>FÍSICA DA GRAVAÇÃO</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div>
+                                <div class="sub-kicker reveal">Conversão Eletromecânica de Sinais</div>
+                                <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                                    Da corrente elétrica <em>ao relevo no plástico</em>
+                                </h2>
+                                <p class="body-desc reveal" style="margin-bottom: 28px;">
+                                    O torno de gravação recebe o sinal de áudio amplificado. Pela <strong>Força de Lorentz</strong>, o campo magnético induz a vibração de um estilete aquecido de diamante que esculpe a espiral na laca virgem.
+                                </p>
+                                <div class="telecom-card highlight reveal" style="padding: 26px;">
+                                    <span class="mono-tag" style="font-weight:700; margin-bottom:8px; display:block;">ORDEM DE GRANDEZA</span>
+                                    <p class="body-desc" style="font-size: 22px; margin: 0;">
+                                        Largura do sulco: <strong>~40 a 50 micrômetros</strong> (fio de cabelo). As ondulações de frequências agudas ocorrem em escala nanométrica!
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:22px;">
+                                <div class="telecom-card reveal" style="padding: 26px;">
+                                    <div class="card-num-badge">
+                                        <span>FASE 1</span>
+                                        <span>LACA MESTRE</span>
+                                    </div>
+                                    <p class="body-desc" style="font-size: 22px;">
+                                        O espaçamento entre sulcos varia dinamicamente: trechos calmos aproximam os sulcos; graves fortes os afastam para evitar colisão mecânica.
+                                    </p>
+                                </div>
+
+                                <div class="telecom-card reveal" style="padding: 26px;">
+                                    <div class="card-num-badge">
+                                        <span>FASE 2</span>
+                                        <span>GALVANOPLASTIA</span>
+                                    </div>
+                                    <p class="body-desc" style="font-size: 22px;">
+                                        Banhos de prata e níquel geram as matrizes metálicas inversas ("estampadoras") capazes de transferir o relevo em escala industrial.
+                                    </p>
+                                </div>
+
+                                <div class="telecom-card reveal" style="padding: 26px;">
+                                    <div class="card-num-badge">
+                                        <span>FASE 3</span>
+                                        <span>PRENSAGEM TÉRMICA</span>
+                                    </div>
+                                    <p class="body-desc" style="font-size: 22px;">
+                                        Uma pastilha de PVC aquecida a 150°C sob 100 toneladas de pressão se molda termicamente a cada micro-ranhura em segundos.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">04 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 5: MODULAÇÃO 45/45° ESTÉREO
+                 ======================================================== -->
+            <section class="slide" data-section="Modulação 45/45">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>02 // DO SULCO AO SOM</span>
+                            <span>MODULAÇÃO ORTOGONAL</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>SISTEMA WESTREX 45°/45° (1957)</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div>
+                                <div class="sub-kicker reveal">Multiplexação Espacial de Canais</div>
+                                <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                                    Dois canais independentes <em>num único sulco mecânico</em>
+                                </h2>
+                                <p class="body-desc reveal" style="margin-bottom: 24px;">
+                                    Princípio idêntico à modulação em quadratura (QAM) de telecomunicações: <strong>dois eixos geométricos ortogonais a 90°</strong> no formato em "V".
+                                </p>
+
+                                <div class="telecom-card highlight reveal" style="padding: 24px; margin-bottom: 16px;">
+                                    <span class="mono-tag" style="font-weight:700; color:var(--color-ink);">RETROCOMPATIBILIDADE MONO</span>
+                                    <p class="body-desc" style="font-size: 21px; margin-top: 6px;">
+                                        <strong>Movimento Horizontal = Soma (L + R):</strong> Garante que agulhas mono antigas leiam os dois canais sem pular para fora do sulco.
+                                    </p>
+                                </div>
+
+                                <div class="telecom-card reveal" style="padding: 24px;">
+                                    <span class="mono-tag" style="font-weight:700; color:var(--color-ink);">INFORMAÇÃO ESTÉREO</span>
+                                    <p class="body-desc" style="font-size: 21px; margin-top: 6px;">
+                                        <strong>Movimento Vertical = Diferença (L - R):</strong> Codifica a separação estéreo em profundidade angular.
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- SVG Cross-section -->
+                            <div class="diagram-container reveal" style="height: 480px;">
+                                <svg width="100%" height="380" viewBox="0 0 600 380" fill="none">
+                                    <line x1="30" y1="80" x2="220" y2="80" stroke="#1F2BE0" stroke-width="2.5"/>
+                                    <line x1="380" y1="80" x2="570" y2="80" stroke="#1F2BE0" stroke-width="2.5"/>
+                                    <text x="60" y="65" font-family="'DM Mono', monospace" font-size="14" fill="#5560E5">SUPERFÍCIE DO PVC</text>
+
+                                    <!-- V-Groove 90° -->
+                                    <path d="M220 80 L300 270 L380 80" stroke="#1F2BE0" stroke-width="3.5" fill="#E6E0CE"/>
+
+                                    <line x1="300" y1="270" x2="160" y2="130" stroke="#1F2BE0" stroke-dasharray="5 5" stroke-width="2"/>
+                                    <text x="110" y="120" font-family="'DM Mono', monospace" font-size="16" fill="#1F2BE0" font-weight="700">CANAL L (+45°)</text>
+
+                                    <line x1="300" y1="270" x2="440" y2="130" stroke="#1F2BE0" stroke-dasharray="5 5" stroke-width="2"/>
+                                    <text x="430" y="120" font-family="'DM Mono', monospace" font-size="16" fill="#1F2BE0" font-weight="700">CANAL R (-45°)</text>
+
+                                    <!-- Agulha Stylus -->
+                                    <polygon points="300,250 280,140 320,140" fill="#1F2BE0" opacity="0.9"/>
+                                    <text x="300" y="125" font-family="'DM Mono', monospace" font-size="14" fill="#F0EBDE" text-anchor="middle">AGULHA</text>
+
+                                    <!-- Vetor Horizontal (L+R) -->
+                                    <line x1="220" y1="315" x2="380" y2="315" stroke="#C02626" stroke-width="2.5"/>
+                                    <text x="300" y="340" font-family="'Hanken Grotesk', sans-serif" font-size="16" fill="#C02626" text-anchor="middle" font-weight="700">↔ LATERAL = SOMA (L + R) MONO</text>
+
+                                    <!-- Vetor Vertical (L-R) -->
+                                    <line x1="500" y1="210" x2="500" y2="280" stroke="#0E7440" stroke-width="2.5"/>
+                                    <text x="500" y="305" font-family="'Hanken Grotesk', sans-serif" font-size="15" fill="#0E7440" text-anchor="middle" font-weight="700">↕ VERTICAL = L - R</text>
+                                </svg>
+                                <div class="diagram-caption">FIG 2.0 — CORTE TRANSVERSAL DO SULCO ESTÉREO A 90°</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">05 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 6: TELECOM NO VINIL — O DILEMA DA BANDA E GRAVES
+                 ======================================================== -->
+            <section class="slide" data-section="Telecom no Vinil">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>03 // TELECOM NO VINIL</span>
+                            <span>RESTRIÇÕES FÍSICAS DE ENERGIA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>RELAÇÃO DESLOCAMENTO VS FREQUÊNCIA</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">A Física do Movimento Mecânico</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 32px;">
+                            Por que um sinal puro sem filtro <em>destruiria o disco?</em>
+                        </h2>
+
+                        <div class="cards-grid-2">
+                            <!-- Graves -->
+                            <div class="telecom-card highlight reveal">
+                                <div class="card-num-badge">
+                                    <span>PROBLEMA 1 // GRAVES</span>
+                                    <span>20 Hz – 500 Hz</span>
+                                </div>
+                                <h3 class="card-heading">Deslocamento Gigantesco</h3>
+                                <p class="body-desc" style="margin-bottom: 20px;">
+                                    Para uma mesma energia sonora, o deslocamento mecânico da agulha é inversamente proporcional à frequência:
+                                </p>
+                                <div style="background:var(--color-paper); border:1.5px solid var(--color-ink); padding:16px; font-family:var(--font-mono); font-size:24px; color:var(--color-ink); text-align:center; font-weight:700; margin-bottom:20px;">
+                                    Deslocamento (x) ∝ Amplitude / f
+                                </div>
+                                <p class="body-desc">
+                                    Um grave de 40 Hz gravaria sulcos tão largos que a agulha pularia no ar e cada lado do disco comportaria apenas <strong>4 minutos de música!</strong>
+                                </p>
+                            </div>
+
+                            <!-- Agudos -->
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>PROBLEMA 2 // AGUDOS</span>
+                                    <span>2 kHz – 20 kHz</span>
+                                </div>
+                                <h3 class="card-heading">Afogamento no Ruído Térmico</h3>
+                                <p class="body-desc" style="margin-bottom: 20px;">
+                                    Nas altas frequências, as amplitudes de vibração tornam-se microscópicas, da ordem de nanômetros:
+                                </p>
+                                <div style="background:var(--color-paper-alt); border:1.5px solid var(--color-ink); padding:16px; font-family:var(--font-mono); font-size:24px; color:var(--color-ink); text-align:center; font-weight:700; margin-bottom:20px;">
+                                    SNR ≪ 0 dB (Sinal &lt; Ruído Granular)
+                                </div>
+                                <p class="body-desc">
+                                    As rugosidades moleculares do PVC e o atrito da agulha geram um hiss contínuo que destruiria completamente os agudos originais.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">06 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 7: A CURVA RIAA — PRÉ-ÊNFASE E DE-ÊNFASE
+                 ======================================================== -->
+            <section class="slide" data-section="Curva RIAA">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>03 // TELECOM NO VINIL</span>
+                            <span>EQUALIZAÇÃO RIAA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>PRÉ-ÊNFASE & DE-ÊNFASE</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div>
+                                <div class="sub-kicker reveal">Filtros Casados de Telecomunicações</div>
+                                <h2 class="display-title reveal" style="margin-bottom: 20px;">
+                                    Curva RIAA: <em>O mesmo princípio do rádio FM</em>
+                                </h2>
+                                <p class="body-desc reveal" style="margin-bottom: 22px;">
+                                    Para resolver o dilema físico, a RIAA padronizou em 1954 um par de filtros simétricos complementares:
+                                </p>
+
+                                <div class="telecom-card highlight reveal" style="padding: 24px; margin-bottom: 18px;">
+                                    <span class="mono-tag" style="font-weight:700;">1. GRAVAÇÃO (PRÉ-ÊNFASE DO TRANSMISSOR)</span>
+                                    <p class="body-desc" style="font-size: 21px; margin: 8px 0 0 0;">
+                                        Atenua os graves em até <strong>-20 dB @ 20 Hz</strong> (sulcos finos, 25 min de música) e amplifica os agudos em até <strong>+20 dB @ 20 kHz</strong>.
+                                    </p>
+                                </div>
+
+                                <div class="telecom-card reveal" style="padding: 24px;">
+                                    <span class="mono-tag" style="font-weight:700;">2. REPRODUÇÃO (DE-ÊNFASE DO RECEPTOR)</span>
+                                    <p class="body-desc" style="font-size: 21px; margin: 8px 0 0 0;">
+                                        O pré-amplificador aplica a curva espelhada: restaura o sinal plano e <strong>derruba o ruído de superfície do PVC em 20 dB!</strong>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <!-- SVG RIAA Graph -->
+                            <div class="diagram-container reveal" style="height: 480px;">
+                                <svg width="100%" height="370" viewBox="0 0 600 370" fill="none">
+                                    <line x1="70" y1="50" x2="560" y2="50" stroke="#1F2BE0" stroke-opacity="0.1" stroke-width="1"/>
+                                    <text x="25" y="55" font-family="'DM Mono', monospace" font-size="14" fill="#1F2BE0">+20 dB</text>
+
+                                    <line x1="70" y1="120" x2="560" y2="120" stroke="#1F2BE0" stroke-opacity="0.1" stroke-width="1"/>
+                                    <text x="25" y="125" font-family="'DM Mono', monospace" font-size="14" fill="#1F2BE0">+10 dB</text>
+
+                                    <line x1="70" y1="190" x2="560" y2="190" stroke="#1F2BE0" stroke-width="2"/>
+                                    <text x="35" y="195" font-family="'DM Mono', monospace" font-size="15" fill="#1F2BE0" font-weight="700">0 dB</text>
+
+                                    <line x1="70" y1="260" x2="560" y2="260" stroke="#1F2BE0" stroke-opacity="0.1" stroke-width="1"/>
+                                    <text x="25" y="265" font-family="'DM Mono', monospace" font-size="14" fill="#1F2BE0">-10 dB</text>
+
+                                    <line x1="70" y1="330" x2="560" y2="330" stroke="#1F2BE0" stroke-opacity="0.1" stroke-width="1"/>
+                                    <text x="25" y="335" font-family="'DM Mono', monospace" font-size="14" fill="#1F2BE0">-20 dB</text>
+
+                                    <!-- Frequências -->
+                                    <text x="80" y="360" font-family="'DM Mono', monospace" font-size="14" fill="#5560E5">20Hz</text>
+                                    <text x="210" y="360" font-family="'DM Mono', monospace" font-size="14" fill="#5560E5">100Hz</text>
+                                    <text x="345" y="360" font-family="'DM Mono', monospace" font-size="15" fill="#1F2BE0" font-weight="700">1 kHz (0dB)</text>
+                                    <text x="470" y="360" font-family="'DM Mono', monospace" font-size="14" fill="#5560E5">10kHz</text>
+                                    <text x="540" y="360" font-family="'DM Mono', monospace" font-size="14" fill="#5560E5">20kHz</text>
+
+                                    <!-- Curva Gravação -->
+                                    <path d="M 80 325 C 160 310, 260 250, 350 190 C 440 130, 490 75, 550 55" stroke="#C02626" stroke-width="3.5" fill="none"/>
+                                    <text x="400" y="85" font-family="'DM Mono', monospace" font-size="15" fill="#C02626" font-weight="700">GRAVAÇÃO (+PRÉ-ÊNFASE)</text>
+
+                                    <!-- Curva Reprodução -->
+                                    <path d="M 80 55 C 160 70, 260 130, 350 190 C 440 250, 490 310, 550 325" stroke="#1F2BE0" stroke-width="3.5" fill="none"/>
+                                    <text x="400" y="305" font-family="'DM Mono', monospace" font-size="15" fill="#1F2BE0" font-weight="700">REPRODUÇÃO (-DE-ÊNFASE)</text>
+
+                                    <!-- Resposta Plana -->
+                                    <line x1="80" y1="190" x2="550" y2="190" stroke="#0E7440" stroke-width="2.5" stroke-dasharray="6 4"/>
+                                    <text x="160" y="180" font-family="'DM Mono', monospace" font-size="14" fill="#0E7440" font-weight="700">RESPOSTA FINAL PLANA (0 dB)</text>
+                                </svg>
+                                <div class="diagram-caption">FIG 3.0 — EQUALIZAÇÃO SIMÉTRICA EM TORNO DO PONTO DE INFLEXÃO DE 1 kHz</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">07 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 8: RUÍDO, SNR E DISTORÇÃO DO SULCO INTERNO
+                 ======================================================== -->
+            <section class="slide" data-section="SNR e Distorção">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>03 // TELECOM NO VINIL</span>
+                            <span>LIMITES DO CANAL FÍSICO</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>VELOCIDADE LINEAR VARIÁVEL (v = ω · r)</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div>
+                                <div class="sub-kicker reveal">Não-Linearidades Espaciais de Canal</div>
+                                <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                                    A velocidade tangencial cai: <em>O canal degrada no centro</em>
+                                </h2>
+                                <p class="body-desc reveal" style="margin-bottom: 24px;">
+                                    A rotação angular é constante (<strong>33⅓ RPM</strong>), mas o raio diminui em mais de 60% da borda externa para o centro:
+                                </p>
+
+                                <div class="ledger-table reveal">
+                                    <div class="ledger-header" style="grid-template-columns: 180px 1fr 1fr;">
+                                        <span>POSIÇÃO</span>
+                                        <span>VELOCIDADE LINEAR</span>
+                                        <span>COMPRIMENTO DE ONDA (15 kHz)</span>
+                                    </div>
+                                    <div class="ledger-row" style="grid-template-columns: 180px 1fr 1fr;">
+                                        <span class="ledger-code">Borda Externa</span>
+                                        <span style="font-size:22px; font-weight:600; color:var(--color-ink);">~50 cm/s</span>
+                                        <span style="font-size:20px; color:#1F2238;">$\lambda \approx 33\text{ }\mu\text{m}$ (Rastreio limpo)</span>
+                                    </div>
+                                    <div class="ledger-row" style="grid-template-columns: 180px 1fr 1fr;">
+                                        <span class="ledger-code">Borda Interna</span>
+                                        <span style="font-size:22px; font-weight:600; color:#C02626;">~20 cm/s</span>
+                                        <span style="font-size:20px; color:#C02626; font-weight:600;">$\lambda \approx 13\text{ }\mu\text{m}$ (Menor que a agulha!)</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div style="display:flex; flex-direction:column; gap:22px;">
+                                <div class="telecom-card reveal">
+                                    <div class="card-num-badge">
+                                        <span>FENÔMENO</span>
+                                        <span>INNER GROOVE DISTORTION</span>
+                                    </div>
+                                    <h3 class="card-heading" style="font-size:34px;">Compressão Espacial da Informação</h3>
+                                    <p class="body-desc">
+                                        No miolo do disco, o comprimento de onda fica menor que a área de contato da agulha. Resultado: distorção harmônica e perda audível de agudos na última faixa.
+                                    </p>
+                                </div>
+
+                                <div class="telecom-card highlight reveal">
+                                    <div class="card-num-badge">
+                                        <span>RELAÇÃO SINAL-RUÍDO</span>
+                                        <span>LIMITAÇÃO TEÓRICA</span>
+                                    </div>
+                                    <h3 class="card-heading" style="font-size:34px;">SNR Real: ~55 a 65 dB</h3>
+                                    <p class="body-desc">
+                                        O vinil é fisicamente limitado por ruído impulsivo (estática, poeira) e ruído estocástico de fricção — contra <strong>96 dB</strong> do CD (16 bits) e <strong>144 dB</strong> do áudio de 24 bits.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">08 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 9: ANALÓGICO VS DIGITAL — NYQUIST E SHANNON
+                 ======================================================== -->
+            <section class="slide" data-section="Analógico vs Digital">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>03 // TELECOM NO VINIL</span>
+                            <span>A FRONTEIRA DO SINAL</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>TEOREMA DA AMOSTRAGEM</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">A Teoria de Nyquist-Shannon vs o Mito Popular</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 28px;">
+                            O vinil é contínuo, <em>mas não tem resolução infinita</em>
+                        </h2>
+
+                        <div class="cards-grid-2">
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>DOMÍNIO ANALÓGICO</span>
+                                    <span>CANAL MECÂNICO CONTÍNUO</span>
+                                </div>
+                                <h3 class="card-heading">Limites Físicos do Vinil</h3>
+                                <ul style="padding-left: 24px; font-family: var(--font-sans); font-size: 22px; line-height: 1.6; color: #1F2238;">
+                                    <li><strong>Resolução máxima equivalente:</strong> ~10 a 11 bits devido ao ruído de fundo do polímero.</li>
+                                    <li><strong>Degradação por leitura:</strong> a agulha deforma plasticamente o vinil a cada reprodução.</li>
+                                    <li><strong>Diafonia (Crosstalk):</strong> vazamento de até -25 a -30 dB entre os canais estéreo L e R.</li>
+                                </ul>
+                            </div>
+
+                            <div class="telecom-card highlight reveal">
+                                <div class="card-num-badge">
+                                    <span>DOMÍNIO DIGITAL</span>
+                                    <span>TEOREMA DE SHANNON</span>
+                                </div>
+                                <h3 class="card-heading">O Mito da "Escadinha"</h3>
+                                <ul style="padding-left: 24px; font-family: var(--font-sans); font-size: 22px; line-height: 1.6; color: #1F2238;">
+                                    <li><strong>Reconstrução Contínua:</strong> O filtro sinc passa-baixas reconstrói a onda de forma 100% contínua e suave, sem degraus.</li>
+                                    <li><strong>Fidelidade Matemática:</strong> Qualquer frequência até 20 kHz é perfeitamente reproduzida em 44.1 kHz.</li>
+                                    <li><strong>Separação Estéreo Perfeita:</strong> &gt; 96 dB de isolamento entre canais, sem interferência.</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">09 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 10: MITOS E VERDADES — PARTE 1
+                 ======================================================== -->
+            <section class="slide" data-section="Mitos e Verdades">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>04 // MITOS E VERDADES</span>
+                            <span>ANÁLISE CRÍTICA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>AUDIÓFILOS VS ENGENHARIA</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">Rigor Científico com Bom Humor</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                            Desmistificando o áudio <em>com Telecomunicações</em>
+                        </h2>
+
+                        <div class="ledger-table reveal">
+                            <div class="ledger-header">
+                                <span>CÓDIGO</span>
+                                <span>AFIRMAÇÃO POPULAR</span>
+                                <span>EXPLICAÇÃO TÉCNICA DE TELECOM</span>
+                                <span>VEREDITO</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">MITO 01</span>
+                                <span class="ledger-title">"O som do vinil é infinito porque a onda é contínua."</span>
+                                <span class="ledger-desc">O ruído térmico da fricção do PVC, as imperfeições moleculares e o raio da agulha limitam a faixa dinâmica real a cerca de 10 a 11 bits equivalentes.</span>
+                                <span class="ledger-status status-mito">MITO ❌</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">MITO 02</span>
+                                <span class="ledger-title">"O som do vinil é mais 'quente' por ser mais fiel."</span>
+                                <span class="ledger-desc">A 'quentura' é <strong>distorção harmônica de 2ª ordem</strong> e compressão mecânica natural. Agrada ao ouvido humano, mas é coloração de canal, não fidelidade neutra.</span>
+                                <span class="ledger-status status-mito">DISTORÇÃO ⚠️</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">MITO 03</span>
+                                <span class="ledger-title">"O áudio digital tem degraus e perde informação."</span>
+                                <span class="ledger-desc">O Teorema de Nyquist-Shannon prova matematicamente que o filtro reconstrói o sinal de forma contínua e perfeita. Degraus só existem em desenhos didáticos!</span>
+                                <span class="ledger-status status-mito">MITO ❌</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">10 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 11: MITOS E VERDADES — PARTE 2
+                 ======================================================== -->
+            <section class="slide" data-section="Mitos e Verdades">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>04 // MITOS E VERDADES</span>
+                            <span>PADRÕES E FÍSICA APLICADA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>MERCADO & INTEROPERABILIDADE</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">Física Real vs Efeito Placebo</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 24px;">
+                            Cabos mágicos, desgaste <em>e padronização</em>
+                        </h2>
+
+                        <div class="ledger-table reveal">
+                            <div class="ledger-header">
+                                <span>CÓDIGO</span>
+                                <span>AFIRMAÇÃO POPULAR</span>
+                                <span>EXPLICAÇÃO TÉCNICA DE TELECOM</span>
+                                <span>VEREDITO</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">MITO 04</span>
+                                <span class="ledger-title">"O vinil dura para sempre se bem conservado."</span>
+                                <span class="ledger-desc">A ponta de diamante raspa o plástico aplicando pressões de várias toneladas por cm². O canal sofre degradação mecânica acumulada a cada leitura.</span>
+                                <span class="ledger-status status-mito">DESGASTE ❌</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">MITO 05</span>
+                                <span class="ledger-title">"Cabo de energia de R$ 15.000 melhora a clareza do som."</span>
+                                <span class="ledger-desc">As equações de Maxwell não negociam com marketing. A capacitância do cabo da cápsula importa, mas cabos de ouro mágicos são efeito placebo certificado.</span>
+                                <span class="ledger-status status-mito">SNAKE OIL 🐍</span>
+                            </div>
+
+                            <div class="ledger-row">
+                                <span class="ledger-code">FATO 06</span>
+                                <span class="ledger-title">"A curva RIAA foi um marco de interoperabilidade."</span>
+                                <span class="ledger-desc">Até 1954, cada gravadora usava curvas arbitrárias incompatíveis. A padronização RIAA viabilizou o mercado global unificado de telecomunicações sonoras.</span>
+                                <span class="ledger-status status-verdade">VERDADE ✔</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">11 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 12: CONCLUSÃO
+                 ======================================================== -->
+            <section class="slide" data-section="Conclusão">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>05 // CONCLUSÃO</span>
+                            <span>SÍNTESE DE ENGENHARIA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>LIÇÕES DE TELECOMUNICAÇÕES</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="sub-kicker reveal">O Que Fica para a Engenharia de Computação?</div>
+                        <h2 class="display-title reveal" style="margin-bottom: 32px;">
+                            Leis universais de transmissão: <em>Do plástico à fibra ótica</em>
+                        </h2>
+
+                        <div class="cards-grid-3">
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>LIÇÃO 01</span>
+                                    <span>CONDICIONAMENTO</span>
+                                </div>
+                                <h3 class="card-heading">O Meio Impõe Limites</h3>
+                                <p class="body-desc">
+                                    Nenhum sinal viaja no meio físico em seu formato bruto. Seja modulando relevo num sulco ou pulsos de laser na fibra, a engenharia existe para contornar a física.
+                                </p>
+                            </div>
+
+                            <div class="telecom-card highlight reveal">
+                                <div class="card-num-badge">
+                                    <span>LIÇÃO 02</span>
+                                    <span>TRADE-OFFS DE SHANNON</span>
+                                </div>
+                                <h3 class="card-heading">Compromisso Eterno</h3>
+                                <p class="body-desc">
+                                    Largura de banda, relação sinal-ruído e capacidade de canal são grandezas estritamente entrelaçadas em qualquer meio físico analógico ou digital.
+                                </p>
+                            </div>
+
+                            <div class="telecom-card reveal">
+                                <div class="card-num-badge">
+                                    <span>LIÇÃO 03</span>
+                                    <span>INTEROPERABILIDADE</span>
+                                </div>
+                                <h3 class="card-heading">Padrões Abertos</h3>
+                                <p class="body-desc">
+                                    A curva RIAA em 1954 salvou a indústria da fragmentação de padrões — a mesma lição de interoperabilidade que tornou o TCP/IP e a Internet viáveis.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">12 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+            <!-- ========================================================
+                 SLIDE 13: EXPERIÊNCIA COM A MÚSICA & PERGUNTAS
+                 ======================================================== -->
+            <section class="slide" data-section="Encerramento">
+                <div class="stage-canvas">
+                    <header class="slide-header">
+                        <div class="header-title-left">
+                            <span>05 // ENCERRAMENTO</span>
+                            <span>EXPERIÊNCIA HUMANA</span>
+                        </div>
+                        <div class="header-meta-right">
+                            <span>PERGUNTAS & DISCUSSÃO</span>
+                        </div>
+                    </header>
+
+                    <div class="slide-body">
+                        <div class="split-2col">
+                            <div>
+                                <div class="sub-kicker reveal">O Ritual Analógico no Mundo Digital</div>
+                                <h2 class="display-title reveal" style="margin-bottom: 20px;">
+                                    A beleza de tocar na onda <em>com as próprias mãos</em>
+                                </h2>
+                                <p class="body-desc reveal" style="margin-bottom: 20px;">
+                                    Se o digital é matematicamente superior em todos os parâmetros técnicos, por que continuamos amando o vinil?
+                                </p>
+                                <div class="card-quote reveal">
+                                    "O vinil nos obriga a desacelerar, ouvir o álbum na íntegra e valorizar o suporte físico da arte. No mundo do streaming infinito, a limitação virou afeto."
+                                </div>
+                            </div>
+
+                            <div class="telecom-card highlight reveal" style="padding: 44px; text-align:center; display:flex; flex-direction:column; justify-content:center;">
+                                <div class="sub-kicker" style="justify-content:center; margin-bottom:16px;">OBRIGADO PELA ATENÇÃO!</div>
+                                <h3 style="font-family: var(--font-display); font-size: 52px; color: var(--color-ink); margin: 0 0 16px 0;">
+                                    Espaço Aberto para Perguntas
+                                </h3>
+                                <p class="body-desc" style="max-width: 520px; margin: 0 auto 32px auto; font-size: 22px;">
+                                    Dúvidas sobre curva RIAA, modulação 45/45°, distorção de rastreio ou debates sobre o sinal analógico?
+                                </p>
+                                <div style="display:flex; justify-content:center; gap:20px;">
+                                    <span class="mono-tag" style="background:var(--color-paper); border:1.5px solid var(--color-ink); padding:10px 20px; font-weight:700;">
+                                        ECI • TELECOM
+                                    </span>
+                                    <span class="mono-tag" style="background:var(--color-paper); border:1.5px solid var(--color-ink); padding:10px 20px; font-weight:700;">
+                                        DISCUSSÃO ABERTA
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <footer class="slide-footer">
+                        <div class="footer-course">Engenharia de Computação e Informação</div>
+                        <div class="footer-page-counter">13 / 13</div>
+                    </footer>
+                    <div class="bottom-hairline"></div>
+                </div>
+            </section>
+
+        </main>
+    </div>
+
+    <!-- Zona de Hover Invisível no Rodapé (Barra só aparece ao passar o mouse perto do fundo) -->
+    <div class="deck-controls-hover-zone">
+        <div class="deck-controls">
+            <button class="control-btn" id="prevBtn" title="Slide Anterior (Seta Esquerda)">← Anterior</button>
+            <span class="control-slide-info" id="slideInfo">01 / 13</span>
+            <button class="control-btn" id="nextBtn" title="Próximo Slide (Seta Direita / Espaço)">Próximo →</button>
+        </div>
+    </div>
+
+    <!-- ===========================================
+       SLIDE PRESENTATION CONTROLLER
+       =========================================== -->
+    <script>
+        class PresentationController {
+            constructor() {
+                this.slides = document.querySelectorAll('.slide');
+                this.totalSlides = this.slides.length;
+                this.currentSlide = 0;
+                this.stage = document.getElementById('deckStage');
+                this.progressFill = document.getElementById('progressFill');
+                this.slideInfo = document.getElementById('slideInfo');
+                this.editMode = false;
+
+                this.setupStageScale();
+                this.setupKeyboardNav();
+                this.setupControls();
+                this.setupTouchNav();
+                this.showSlide(0);
+            }
+
+            setupStageScale() {
+                const scale = () => {
+                    const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+                    const x = (window.innerWidth - 1920 * factor) / 2;
+                    const y = (window.innerHeight - 1080 * factor) / 2;
+                    this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+                };
+                scale();
+                window.addEventListener('resize', scale);
+            }
+
+            setupKeyboardNav() {
+                window.addEventListener('keydown', (e) => {
+                    if (this.editMode && e.target.getAttribute('contenteditable') === 'true') {
+                        if (e.key === 'Escape') {
+                            e.target.blur();
+                        }
+                        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
+                            e.preventDefault();
+                            this.saveEdits();
+                        }
+                        return;
+                    }
+
+                    switch(e.key) {
+                        case 'ArrowRight':
+                        case 'PageDown':
+                        case ' ':
+                            e.preventDefault();
+                            this.nextSlide();
+                            break;
+                        case 'ArrowLeft':
+                        case 'PageUp':
+                            e.preventDefault();
+                            this.prevSlide();
+                            break;
+                        case 'Home':
+                            e.preventDefault();
+                            this.showSlide(0);
+                            break;
+                        case 'End':
+                            e.preventDefault();
+                            this.showSlide(this.totalSlides - 1);
+                            break;
+                        case 'e':
+                        case 'E':
+                            this.toggleEditMode();
+                            break;
+                    }
+                });
+            }
+
+            setupControls() {
+                document.getElementById('nextBtn').addEventListener('click', () => this.nextSlide());
+                document.getElementById('prevBtn').addEventListener('click', () => this.prevSlide());
+            }
+
+            setupTouchNav() {
+                let startX = 0;
+                let startY = 0;
+
+                window.addEventListener('touchstart', (e) => {
+                    startX = e.touches[0].clientX;
+                    startY = e.touches[0].clientY;
+                }, { passive: true });
+
+                window.addEventListener('touchend', (e) => {
+                    const deltaX = e.changedTouches[0].clientX - startX;
+                    const deltaY = e.changedTouches[0].clientY - startY;
+
+                    if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 50) {
+                        if (deltaX < 0) this.nextSlide();
+                        else this.prevSlide();
+                    }
+                }, { passive: true });
+            }
+
+            showSlide(index) {
+                this.currentSlide = Math.max(0, Math.min(index, this.totalSlides - 1));
+
+                this.slides.forEach((slide, i) => {
+                    const isActive = i === this.currentSlide;
+                    slide.classList.toggle('active', isActive);
+                    slide.classList.toggle('visible', isActive);
+                });
+
+                const progressPct = ((this.currentSlide + 1) / this.totalSlides) * 100;
+                this.progressFill.style.width = `${progressPct}%`;
+                
+                const paddedCurrent = String(this.currentSlide + 1).padStart(2, '0');
+                const paddedTotal = String(this.totalSlides).padStart(2, '0');
+                this.slideInfo.textContent = `${paddedCurrent} / ${paddedTotal}`;
+            }
+
+            nextSlide() {
+                if (this.currentSlide < this.totalSlides - 1) {
+                    this.showSlide(this.currentSlide + 1);
+                }
+            }
+
+            prevSlide() {
+                if (this.currentSlide > 0) {
+                    this.showSlide(this.currentSlide - 1);
+                }
+            }
+
+            toggleEditMode() {
+                this.editMode = !this.editMode;
+                document.body.classList.toggle('edit-mode-active', this.editMode);
+
+                const textElements = document.querySelectorAll('h1, h2, h3, p, span, div.card-quote, .ledger-desc, .ledger-title');
+                textElements.forEach(el => {
+                    if (this.editMode) {
+                        el.setAttribute('contenteditable', 'true');
+                        el.setAttribute('spellcheck', 'false');
+                    } else {
+                        el.removeAttribute('contenteditable');
+                    }
+                });
+
+                if (!this.editMode) {
+                    this.saveEdits();
+                }
+            }
+
+            saveEdits() {
+                const htmlContent = document.documentElement.outerHTML;
+                localStorage.setItem('telecom_slides_saved_content', htmlContent);
+            }
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            new PresentationController();
+        });
+    </script>
+</body>
+</html>
